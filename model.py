@@ -3,26 +3,41 @@ import cv2
 import keras
 import numpy as np
 from keras.models import Sequential
-from keras.layers import Flatten, Dense, Lambda, Cropping2D
+from keras.layers import Flatten, Dense, Lambda, Cropping2D, Activation, Dropout
 from keras.layers import Convolution2D, MaxPooling2D
 
 def preprocess_input():
     lines = []
-    with open("../data_assignment3/attempt2/driving_log.csv") as csvfile:
+    with open("../data_assignment3/merge_a4_a5/driving_log.csv") as csvfile:
         reader = csv.reader(csvfile)
         for line in reader:
             lines.append(line)
-
     images = []
     measurements = []
     for line in lines:
         center_source_path = line[0]
-        filename = source_path.split('/')[-1]
-        current_path = "../data_assignment3/attempt2/IMG/" + filename
-        image = cv2.imread(current_path)
-        measurement = float(line[3])
-        images.append(image)
-        measurements.append(measurement)
+        left_source_path = line[1]
+        right_source_path = line[2]
+        center_filename = center_source_path.split('/')[-1]
+        left_filename = left_source_path.split('/')[-1]
+        right_filename = right_source_path.split('/')[-1]
+        center_current_path = "../data_assignment3/merge_a4_a5/IMG/" + center_filename
+        left_current_path = "../data_assignment3/merge_a4_a5/IMG/" + left_filename
+        right_current_path = "../data_assignment3/merge_a4_a5/IMG/" + right_filename
+        center_image = cv2.imread(center_current_path)
+        left_image = cv2.imread(left_current_path)
+        right_image = cv2.imread(right_current_path)
+        images.append(center_image)
+        images.append(left_image)
+        images.append(right_image)
+        steering_center = float(line[3])
+        correction = 0.2 # this is a parameter to tune
+        steering_left = steering_center + correction
+        steering_right = steering_center - correction
+        measurements.append(steering_center)
+        measurements.append(steering_left)
+        measurements.append(steering_right)
+    
     return images, measurements
 
 images, measurements = preprocess_input()
@@ -37,8 +52,10 @@ model.add(Convolution2D(6, 5, 5, activation = "relu"))
 model.add(MaxPooling2D())
 model.add(Flatten())
 model.add(Dense(120))
+model.add(Activation("relu"))
+model.add(Dropout(0.5))
 model.add(Dense(84))
 model.add(Dense(1))
 model.compile(loss = 'mse', optimizer = 'adam')
 model.fit(X_train, y_train, validation_split = 0.2, shuffle = True, nb_epoch = 10)
-model.save('../behavior_model.h5')
+model.save('../behavior_model_attepmt4.h5')
