@@ -14,6 +14,7 @@ from keras.layers.pooling import MaxPooling2D
 from keras.optimizers import Adam
 from keras.regularizers import l2
 import math
+from keras.utils import plot_model
 flags = tf.app.flags
 FLAGS = flags.FLAGS 
 
@@ -34,6 +35,7 @@ steering_recover = data.steering.tolist()
 center, steering = shuffle(center, steering)
 center, X_valid, steering, y_valid = train_test_split(center, steering, test_size = 0.10, random_state = 100) 
 
+#Data pre-processing and correction
 drive_straight, drive_left, drive_right = [], [], []
 a_straight, a_left, a_right = [], [], []
 for i in steering:
@@ -74,7 +76,7 @@ y_train = np.float32(a_straight + a_left + a_right)
 ### PART 2: ARGUMENTATION AND PREPROCESSING ###
 
 # Generate random brightness function, produce darker transformation 
-def random_brightness(image):
+def random_brightness(image, count):
     #Convert 2 HSV colorspace from RGB colorspace
     hsv = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
     #Generate new random brightness
@@ -82,11 +84,15 @@ def random_brightness(image):
     hsv[:,:,2] = rand*hsv[:,:,2]
     #Convert back to RGB colorspace
     new_img = cv2.cvtColor(hsv, cv2.COLOR_HSV2RGB)
+    if count == 1:
+      cv2.imwrite('random_image.jpg', new_img)
     return new_img 
 
 # Flip image around vertical axis
-def flip(image, angle):
+def flip(image, angle, count):
   new_image = cv2.flip(image,1)
+  if count == 1:
+      cv2.imwrite('flipped_image.jpg', new_image)
   new_angle = angle*(-1)
   return new_image, new_angle
 
@@ -101,18 +107,24 @@ def crop_resize(image):
 # Apply random brightness, resize, crop into the chosen sample. Add some small random noise for chosen angle.
 
 def generator_data(batch_size):
+    flip_count = 0
+    b_count = 0
     batch_train = np.zeros((batch_size, 64, 64, 3), dtype = np.float32)
     batch_angle = np.zeros((batch_size,), dtype = np.float32)
     while True:
         data, angle = shuffle(X_train, y_train)
         for i in range(batch_size):
           choice = int(np.random.choice(len(data),1))
-          batch_train[i] = crop_resize(random_brightness(mpimg.imread(data[choice].strip())))
+          batch_train[i] = crop_resize(random_brightness(mpimg.imread(data[choice].strip()),
+          b_count))
+          b_count += 1
           batch_angle[i] = angle[choice]*(1+ np.random.uniform(-0.10,0.10))
           #Flip random images#
           flip_coin = random.randint(0,1)
           if flip_coin == 1:
-            batch_train[i], batch_angle[i] = flip(batch_train[i], batch_angle[i])
+            batch_train[i], batch_angle[i] = flip(batch_train[i],
+            batch_angle[i], flip_count)
+            flip_count += 1
 
         yield batch_train, batch_angle
 
@@ -159,6 +171,7 @@ def main(_):
   adam = Adam(lr = 0.0001)
   model.compile(optimizer= adam, loss='mse', metrics=['accuracy'])
   model.summary()
+  plot_model(model, to_file='model.png')
   model.fit_generator(data_generator, samples_per_epoch = math.ceil(len(X_train)), nb_epoch=FLAGS.epochs, validation_data = valid_generator, nb_val_samples = len(X_valid))
 
   print('Done Training')
