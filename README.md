@@ -2,7 +2,7 @@ This is my submission for the Udacity Behaviour cloning project
 
 To train the model:
 
-python3 new_model.py --epoch 10
+python3 model.py --epoch 10
 
 To run the simulator:
 
@@ -11,4 +11,4 @@ python drive.py model.h5
 
 The output images are in the output directory
 
-The video output is in the current/parent directory - output.mp4
+The video output is in the current/parent directory - video.mp4
